@@ -1,0 +1,173 @@
+.panda-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.panda-avatar {
+  position: relative;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.panda-small .panda-avatar {
+  width: 60px;
+  height: 60px;
+}
+
+.panda-medium .panda-avatar {
+  width: 100px;
+  height: 100px;
+}
+
+.panda-large .panda-avatar {
+  width: 150px;
+  height: 150px;
+}
+
+.panda-face {
+  position: relative;
+  z-index: 2;
+}
+
+.panda-emoji {
+  font-size: inherit;
+  display: block;
+}
+
+.panda-small .panda-emoji {
+  font-size: 30px;
+}
+
+.panda-medium .panda-emoji {
+  font-size: 50px;
+}
+
+.panda-large .panda-emoji {
+  font-size: 80px;
+}
+
+.mood-indicator {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.panda-small .mood-indicator {
+  width: 15px;
+  height: 15px;
+  border-width: 2px;
+}
+
+.panda-medium .mood-indicator {
+  width: 18px;
+  height: 18px;
+}
+
+.mood-pulse {
+  width: 8px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.panda-small .mood-pulse {
+  width: 6px;
+  height: 6px;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+}
+
+.mood-label {
+  font-size: 12px;
+  color: #666;
+  text-transform: capitalize;
+  font-weight: 500;
+  text-align: center;
+  min-height: 16px;
+}
+
+.panda-small .mood-label {
+  font-size: 10px;
+}
+
+.panda-large .mood-label {
+  font-size: 14px;
+}
+
+.action-bubble {
+  position: absolute;
+  top: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 10;
+  max-width: 200px;
+  text-align: center;
+}
+
+.action-bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.8);
+}
+
+.panda-avatar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+}
+
+.panda-avatar:active {
+  transform: translateY(0);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .panda-large .panda-avatar {
+    width: 120px;
+    height: 120px;
+  }
+  
+  .panda-large .panda-emoji {
+    font-size: 60px;
+  }
+  
+  .action-bubble {
+    font-size: 11px;
+    padding: 6px 10px;
+    max-width: 150px;
+  }
+}

@@ -1,0 +1,583 @@
+import React, { useEffect, useState, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { invoke } from '@tauri-apps/api/core'
+import { getCurrentWindow } from '@tauri-apps/api/window'
+import { useAppStore } from './stores/appStore'
+import { adpService } from './services/adpService'
+import { PandaMood } from './types'
+import './App.css'
+
+// 导入图片资源
+import pandaNormal from './assets/images/panda-normal.png'
+import pandaWalking from './assets/images/panda-walking.png'
+import pandaYawning from './assets/images/panda-yawning.png'
+
+function App() {
+  const [isDragging, setIsDragging] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
+  const [eyePosition, setEyePosition] = useState({ x: 0, y: 0 })
+  const [currentBehavior, setCurrentBehavior] = useState<string>('normal')
+  const [isWalking, setIsWalking] = useState(false)
+  const [behaviorIndex, setBehaviorIndex] = useState(0)
+  const [imageLoaded, setImageLoaded] = useState(false)
+  const dragRef = useRef<{ startX: number; startY: number; windowX: number; windowY: number }>({ 
+    startX: 0, 
+    startY: 0, 
+    windowX: 0, 
+    windowY: 0 
+  })
+  const behaviorIntervalRef = useRef<NodeJS.Timeout>()
+
+  const { 
+    panda, 
+    setPandaMood, 
+    setAnimating, 
+    updatePandaAction 
+  } = useAppStore()
+
+  // 预加载图片并确保加载完成
+  useEffect(() => {
+    const preloadImages = [pandaNormal, pandaWalking, pandaYawning]
+    let loadedCount = 0
+    
+    preloadImages.forEach(src => {
+      const img = new Image()
+      img.onload = () => {
+        loadedCount++
+        if (loadedCount === preloadImages.length) {
+          setImageLoaded(true)
+          console.log('所有熊猫图片加载完成！')
+        }
+      }
+      img.onerror = () => {
+        console.error('图片加载失败:', src)
+      }
+      img.src = src
+    })
+  }, [])
+
+  // 初始化
+  useEffect(() => {
+    if (imageLoaded) {
+      adpService.initialize()
+      
+      setTimeout(() => {
+        updatePandaAction('你好！我是小竹子 🎋 点击我可以切换状态，右键查看菜单！')
+        setAnimating(true)
+        setTimeout(() => setAnimating(false), 4000)
+      }, 1000)
+
+      // 眼睛跟踪鼠标
+      const handleMouseMove = (e: MouseEvent) => {
+        const rect = document.querySelector('.panda-character')?.getBoundingClientRect()
+        if (rect) {
+          const centerX = rect.left + rect.width / 2
+          const centerY = rect.top + rect.height / 2
+          const deltaX = (e.clientX - centerX) / 100
+          const deltaY = (e.clientY - centerY) / 100
+          
+          setEyePosition({
+            x: Math.max(-2, Math.min(2, deltaX)),
+            y: Math.max(-1, Math.min(1, deltaY))
+          })
+        }
+      }
+
+      document.addEventListener('mousemove', handleMouseMove)
+      
+      // 启动随机行为 - 5秒间隔
+      startRandomBehaviors()
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove)
+        if (behaviorIntervalRef.current) {
+          clearInterval(behaviorIntervalRef.current)
+        }
+      }
+    }
+  }, [imageLoaded])
+
+  // 随机行为系统 - 5秒间隔
+  const startRandomBehaviors = () => {
+    behaviorIntervalRef.current = setInterval(() => {
+      if (!isDragging && !showMenu && panda.mood !== PandaMood.SLEEPING) {
+        performRandomBehavior()
+      }
+    }, 5000) // 每5秒执行一次随机行为
+  }
+
+  // 点击切换状态功能 - 三个状态循环
+  const cycleThroughBehaviors = () => {
+    const behaviors = ['normal', 'walking', 'yawning']
+    const nextIndex = (behaviorIndex + 1) % behaviors.length
+    setBehaviorIndex(nextIndex)
+    
+    const behavior = behaviors[nextIndex]
+    setCurrentBehavior(behavior)
+    
+    switch (behavior) {
+      case 'walking':
+        performWalk()
+        break
+      case 'yawning':
+        performYawn()
+        break
+      default:
+        setPandaMood(PandaMood.HAPPY)
+        updatePandaAction('状态切换完成！')
+        setAnimating(true)
+        setTimeout(() => setAnimating(false), 2000)
+    }
+  }
+
+  // 随机行为
+  const performRandomBehavior = () => {
+    const behaviors = ['normal', 'yawning', 'eating', 'stretching', 'looking']
+    const randomBehavior = behaviors[Math.floor(Math.random() * behaviors.length)]
+    
+    switch (randomBehavior) {
+      case 'yawning':
+        performYawn()
+        break
+      case 'eating':
+        performEatBamboo()
+        break
+      case 'stretching':
+        performStretch()
+        break
+      case 'looking':
+        performLookAround()
+        break
+      default:
+        setPandaMood(PandaMood.HAPPY)
+        updatePandaAction('随机行为：保持可爱~')
+        setAnimating(true)
+        setTimeout(() => setAnimating(false), 2000)
+    }
+  }
+
+  const performEatBamboo = () => {
+    setCurrentBehavior('eating')
+    setPandaMood(PandaMood.HAPPY)
+    updatePandaAction('吃竹子时间！🎋')
+    setAnimating(true)
+    
+    setTimeout(() => {
+      setCurrentBehavior('normal')
+      setPandaMood(PandaMood.SATISFIED)
+      updatePandaAction('竹子真好吃~')
+      setAnimating(false)
+    }, 3000)
+  }
+
+  const performYawn = () => {
+    setCurrentBehavior('yawning')
+    setPandaMood(PandaMood.SLEEPY)
+    updatePandaAction('有点困了...😴')
+    setAnimating(true)
+    
+    setTimeout(() => {
+      setCurrentBehavior('normal')
+      setPandaMood(PandaMood.HAPPY)
+      updatePandaAction('打哈欠真舒服~')
+      setAnimating(false)
+    }, 2500)
+  }
+
+  const performStretch = () => {
+    setCurrentBehavior('stretching')
+    setPandaMood(PandaMood.ENERGETIC)
+    updatePandaAction('伸个懒腰！🤸')
+    setAnimating(true)
+    
+    setTimeout(() => {
+      setCurrentBehavior('normal')
+      setPandaMood(PandaMood.HAPPY)
+      updatePandaAction('伸展完毕！')
+      setAnimating(false)
+    }, 2000)
+  }
+
+  const performLookAround = () => {
+    setCurrentBehavior('looking')
+    setPandaMood(PandaMood.CURIOUS)
+    updatePandaAction('看看周围有什么...')
+    setAnimating(true)
+    
+    setTimeout(() => {
+      setCurrentBehavior('normal')
+      setPandaMood(PandaMood.HAPPY)
+      updatePandaAction('没发现什么特别的~')
+      setAnimating(false)
+    }, 3000)
+  }
+
+  const performWalk = async () => {
+    setCurrentBehavior('walking')
+    setIsWalking(true)
+    setPandaMood(PandaMood.EXCITED)
+    updatePandaAction('开始散步！🚶')
+    setAnimating(true)
+
+    try {
+      const window = getCurrentWindow()
+      const screenWidth = 1920
+      const screenHeight = 1080
+      
+      // 随机目标位置
+      const targetX = Math.random() * (screenWidth - 600) // 使用新的窗口宽度
+      const targetY = Math.random() * (screenHeight - 600) // 使用新的窗口高度
+      
+      // 移动窗口
+      await window.setPosition({ x: Math.floor(targetX), y: Math.floor(targetY) })
+      
+      setTimeout(() => {
+        setCurrentBehavior('normal')
+        setIsWalking(false)
+        setPandaMood(PandaMood.HAPPY)
+        updatePandaAction('散步结束！')
+        setAnimating(false)
+      }, 2000)
+    } catch (error) {
+      console.error('散步失败:', error)
+      setCurrentBehavior('normal')
+      setIsWalking(false)
+      setAnimating(false)
+    }
+  }
+
+  const performPlay = () => {
+    setCurrentBehavior('playing')
+    setPandaMood(PandaMood.EXCITED)
+    updatePandaAction('玩耍时间！🎮')
+    setAnimating(true)
+    
+    setTimeout(() => {
+      setCurrentBehavior('normal')
+      setPandaMood(PandaMood.HAPPY)
+      updatePandaAction('玩得真开心~')
+      setAnimating(false)
+    }, 3500)
+  }
+
+  // 改进的鼠标事件处理 - 修复拖拽功能
+  const handleMouseDown = async (e: React.MouseEvent) => {
+    if (e.button === 0) { // 左键
+      e.preventDefault() // 防止默认行为
+      setIsDragging(true)
+      setPandaMood(PandaMood.EXCITED)
+      updatePandaAction('被抓住了！')
+      
+      try {
+        const window = getCurrentWindow()
+        const currentPos = await window.outerPosition()
+        
+        dragRef.current = { 
+          startX: e.clientX, 
+          startY: e.clientY,
+          windowX: currentPos.x,
+          windowY: currentPos.y
+        }
+        
+        console.log('开始拖拽:', dragRef.current)
+      } catch (error) {
+        console.error('获取窗口位置失败:', error)
+        dragRef.current = { 
+          startX: e.clientX, 
+          startY: e.clientY,
+          windowX: 0,
+          windowY: 0
+        }
+      }
+    }
+  }
+
+  const handleMouseMove = async (e: React.MouseEvent) => {
+    if (!isDragging) return
+
+    e.preventDefault() // 防止默认行为
+    
+    try {
+      const deltaX = e.clientX - dragRef.current.startX
+      const deltaY = e.clientY - dragRef.current.startY
+      
+      const window = getCurrentWindow()
+      const newX = dragRef.current.windowX + deltaX
+      const newY = dragRef.current.windowY + deltaY
+      
+      // 确保窗口不会移出屏幕
+      const screenWidth = window.screen?.availWidth || 1920
+      const screenHeight = window.screen?.availHeight || 1080
+      const windowWidth = 600 // 使用新的窗口宽度
+      const windowHeight = 600 // 使用新的窗口高度
+      
+      const clampedX = Math.max(0, Math.min(newX, screenWidth - windowWidth))
+      const clampedY = Math.max(0, Math.min(newY, screenHeight - windowHeight))
+      
+      await window.setPosition({ x: Math.floor(clampedX), y: Math.floor(clampedY) })
+      
+      console.log('拖拽中:', { deltaX, deltaY, newX: clampedX, newY: clampedY })
+    } catch (error) {
+      console.error('拖拽失败:', error)
+    }
+  }
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (isDragging) {
+      e.preventDefault() // 防止默认行为
+      setIsDragging(false)
+      setPandaMood(PandaMood.HAPPY)
+      updatePandaAction('放开我了~')
+      console.log('拖拽结束')
+    }
+  }
+
+  // 点击事件处理
+  const handleClick = (e: React.MouseEvent) => {
+    if (e.button === 0 && !isDragging) { // 左键且非拖拽
+      e.preventDefault()
+      cycleThroughBehaviors()
+    }
+  }
+
+  // 右键菜单
+  const handleRightClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setShowMenu(!showMenu)
+    setPandaMood(PandaMood.THINKING)
+    updatePandaAction('看看有什么功能...')
+  }
+
+  // 双击事件
+  const handleDoubleClick = async () => {
+    setPandaMood(PandaMood.EXCITED)
+    updatePandaAction('打开聊天窗口！')
+    setAnimating(true)
+    
+    try {
+      await invoke('create_chat_window')
+    } catch (error) {
+      console.error('创建聊天窗口失败:', error)
+    }
+    
+    setTimeout(() => setAnimating(false), 2000)
+  }
+
+  // 根据行为获取对应的图片 - 使用导入的图片
+  const getPandaImage = () => {
+    switch (currentBehavior) {
+      case 'walking':
+        return pandaWalking
+      case 'yawning':
+        return pandaYawning
+      case 'normal':
+      case 'idle':
+      case 'eating':
+      case 'stretching':
+      case 'looking':
+      case 'playing':
+      default:
+        return pandaNormal
+    }
+  }
+
+  // 如果图片还没加载完成，显示加载状态
+  if (!imageLoaded) {
+    return (
+      <div className="desktop-pet">
+        <div className="loading-container">
+          <div className="loading-panda">🐼</div>
+          <div className="loading-text">小竹子正在加载中...</div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="desktop-pet">
+      {/* 超可爱的熊猫 */}
+      <motion.div
+        className={`panda-character ${isDragging ? 'dragging' : ''}`}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onClick={handleClick}
+        onContextMenu={handleRightClick}
+        onDoubleClick={handleDoubleClick}
+        animate={panda.isAnimating ? {
+          scale: [1, 1.1, 1],
+          y: [0, -8, 0],
+          transition: { duration: 0.6, repeat: 3 }
+        } : {}}
+        whileHover={{ scale: 1.05, y: -3 }}
+      >
+        {/* 熊猫图片主体 */}
+        <div className="panda-image-container">
+          <motion.img 
+            key={currentBehavior} // 关键：当行为改变时重新渲染
+            src={getPandaImage()} 
+            alt="小竹子"
+            className={`panda-image mood-${panda.mood} behavior-${currentBehavior} ${isDragging ? 'dragging' : ''} ${isWalking ? 'walking' : ''}`}
+            draggable={false}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            onLoad={() => console.log('熊猫图片加载成功:', currentBehavior)}
+            onError={(e) => console.error('熊猫图片加载失败:', e)}
+          />
+          
+          {/* 行为特效覆盖层 */}
+          {currentBehavior === 'eating' && (
+            <div className="behavior-effects eating-effects">
+              <div className="bamboo-leaf">🎋</div>
+              <div className="chew-particles">
+                <span>✨</span>
+                <span>✨</span>
+                <span>✨</span>
+              </div>
+            </div>
+          )}
+          
+          {currentBehavior === 'yawning' && (
+            <div className="behavior-effects yawn-effects">
+              <div className="yawn-bubble">💤</div>
+            </div>
+          )}
+          
+          {currentBehavior === 'playing' && (
+            <div className="behavior-effects play-effects">
+              <div className="play-sparkles">
+                <span>🌟</span>
+                <span>⭐</span>
+                <span>✨</span>
+                <span>💫</span>
+              </div>
+            </div>
+          )}
+          
+          {isWalking && (
+            <div className="behavior-effects walk-effects">
+              <div className="footprints">
+                <span className="footprint">🐾</span>
+                <span className="footprint">🐾</span>
+              </div>
+            </div>
+          )}
+          
+          {/* 心情指示器 */}
+          <div className={`mood-indicator ${panda.mood}`}>
+            <div className="mood-pulse"></div>
+          </div>
+          
+          {/* 眼睛跟踪效果覆盖层 */}
+          <div className="eye-tracking-overlay">
+            <div 
+              className="eye-glow left-eye-glow"
+              style={{
+                transform: `translate(${eyePosition.x * 3}px, ${eyePosition.y * 2}px)`
+              }}
+            ></div>
+            <div 
+              className="eye-glow right-eye-glow"
+              style={{
+                transform: `translate(${eyePosition.x * 3}px, ${eyePosition.y * 2}px)`
+              }}
+            ></div>
+          </div>
+        </div>
+
+        {/* 动作气泡 - 优化显示 */}
+        <AnimatePresence>
+          {panda.currentAction && panda.currentAction !== '等待中...' && (
+            <motion.div
+              className="action-bubble"
+              initial={{ opacity: 0, y: 15, scale: 0.7 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -15, scale: 0.7 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            >
+              {panda.currentAction}
+              <div className="bubble-tail"></div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
+      {/* 右键菜单 - 优化显示 */}
+      <AnimatePresence>
+        {showMenu && (
+          <motion.div
+            className="context-menu"
+            initial={{ opacity: 0, scale: 0.8, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 10 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+          >
+            <div className="menu-item" onClick={() => {
+              handleDoubleClick()
+              setShowMenu(false)
+            }}>
+              💬 聊天对话
+            </div>
+            <div className="menu-divider"></div>
+            <div className="menu-item" onClick={() => {
+              cycleThroughBehaviors()
+              setShowMenu(false)
+            }}>
+              �� 切换状态
+            </div>
+            <div className="menu-item" onClick={() => {
+              performEatBamboo()
+              setShowMenu(false)
+            }}>
+              🎋 吃竹子
+            </div>
+            <div className="menu-item" onClick={() => {
+              performYawn()
+              setShowMenu(false)
+            }}>
+              😴 打哈欠
+            </div>
+            <div className="menu-item" onClick={() => {
+              performStretch()
+              setShowMenu(false)
+            }}>
+              🤸 伸懒腰
+            </div>
+            <div className="menu-item" onClick={() => {
+              performPlay()
+              setShowMenu(false)
+            }}>
+              🎮 玩耍
+            </div>
+            <div className="menu-item" onClick={() => {
+              performWalk()
+              setShowMenu(false)
+            }}>
+              🚶 散步
+            </div>
+            <div className="menu-divider"></div>
+            <div className="menu-item" onClick={() => {
+              setPandaMood(PandaMood.ENERGETIC)
+              updatePandaAction('充满活力！')
+              setAnimating(true)
+              setShowMenu(false)
+              setTimeout(() => setAnimating(false), 3000)
+            }}>
+              ⚡ 活力模式
+            </div>
+            <div className="menu-divider"></div>
+            <div className="menu-item danger" onClick={async () => {
+              const window = getCurrentWindow()
+              await window.close()
+            }}>
+              ❌ 退出程序
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+export default App

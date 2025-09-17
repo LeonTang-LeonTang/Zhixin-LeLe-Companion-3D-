@@ -1,0 +1,625 @@
+import React, { useEffect, useState, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { getCurrentWindow } from '@tauri-apps/api/window'
+import { EnterpriseManager, defaultConfig } from './enterprise/EnterpriseManager'
+import { TencentCloudADP, defaultADPConfig } from './enterprise/TencentCloudADP'
+import './App.css'
+
+// 导入图片资源
+import pandaNormal from './assets/images/panda-normal.png'
+import pandaWalking from './assets/images/panda-walking.png'
+import pandaYawning from './assets/images/panda-yawning.png'
+import pandaSleeping from './assets/images/panda-sleeping.png'
+import pandaWorking from './assets/images/panda-working.png'
+import pandaEating from './assets/images/panda-eating.png'
+
+// 熊猫状态类型
+type PandaState = 'normal' | 'walking' | 'yawning' | 'sleeping' | 'working' | 'eating' | 'happy' | 'thinking' | 'excited'
+
+// 企业功能类型
+type EnterpriseFunction = 'chat' | 'email' | 'project' | 'data' | 'finance' | 'hr' | 'crm' | 'supply' | 'settings'
+
+// 字幕消息类型
+interface SubtitleMessage {
+  id: string
+  text: string
+  duration: number
+  type: 'normal' | 'enterprise' | 'mood'
+}
+
+function App() {
+  const [pandaState, setPandaState] = useState<PandaState>('normal')
+  const [isDragging, setIsDragging] = useState(false)
+  const [showContextMenu, setShowContextMenu] = useState(false)
+  const [showFunctionWindow, setShowFunctionWindow] = useState<EnterpriseFunction | null>(null)
+  const [position, setPosition] = useState({ x: 50, y: 50 })
+  const [isAnimating, setIsAnimating] = useState(false)
+  const [currentSubtitle, setCurrentSubtitle] = useState<SubtitleMessage | null>(null)
+  const [mood, setMood] = useState<'happy' | 'normal' | 'tired' | 'excited'>('normal')
+  const [isAutoChanging, setIsAutoChanging] = useState(true)
+  const [enterpriseManager] = useState(() => new EnterpriseManager(defaultConfig))
+  const [adpClient] = useState(() => new TencentCloudADP(defaultADPConfig))
+  const [chatMessages, setChatMessages] = useState<Array<{id: string, text: string, type: 'user' | 'ai', timestamp: Date}>>([])
+  const [chatInput, setChatInput] = useState('')
+  
+  const dragRef = useRef<HTMLDivElement>(null)
+  const autoChangeInterval = useRef<NodeJS.Timeout | null>(null)
+  const subtitleTimeout = useRef<NodeJS.Timeout | null>(null)
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null)
+  const lastClickTime = useRef<number>(0)
+  const randomMoveInterval = useRef<NodeJS.Timeout | null>(null)
+  const dragStart = useRef<{ x: number, y: number }>({ x: 0, y: 0 })
+  const [screenSize, setScreenSize] = useState({ width: 500, height: 500 })
+
+  // 熊猫状态配置
+  const pandaStates = {
+    normal: { image: pandaNormal, name: '正常' },
+    walking: { image: pandaWalking, name: '走路' },
+    yawning: { image: pandaYawning, name: '打哈欠' },
+    sleeping: { image: pandaSleeping, name: '睡觉' },
+    working: { image: pandaWorking, name: '工作' },
+    eating: { image: pandaEating, name: '吃饭' },
+    happy: { image: pandaNormal, name: '开心' },
+    thinking: { image: pandaNormal, name: '思考' },
+    excited: { image: pandaNormal, name: '兴奋' }
+  }
+
+  // 企业功能配置
+  const enterpriseFunctions = {
+    chat: { 
+      icon: '💬', 
+      name: 'AI智能对话', 
+      description: '基于腾讯云LLM的智能助手，支持自然语言对话和业务咨询' 
+    },
+    email: { 
+      icon: '��', 
+      name: '邮件管理', 
+      description: '智能邮件处理，自动分类、回复和优先级管理' 
+    },
+    project: { 
+      icon: '📋', 
+      name: '项目管理', 
+      description: '任务跟踪、进度监控和团队协作管理' 
+    },
+    data: { 
+      icon: '📊', 
+      name: '数据分析', 
+      description: '实时数据分析和可视化，支持多维度报表' 
+    },
+    finance: { 
+      icon: '💰', 
+      name: '财务管理', 
+      description: '财务分析、预算管理和成本控制' 
+    },
+    hr: { 
+      icon: '👥', 
+      name: '人力资源', 
+      description: '招聘管理、绩效评估和员工发展' 
+    },
+    crm: { 
+      icon: '��', 
+      name: '客户管理', 
+      description: '客户关系管理、销售跟踪和商机分析' 
+    },
+    supply: { 
+      icon: '📦', 
+      name: '供应链', 
+      description: '库存管理、供应商管理和物流优化' 
+    },
+    settings: { 
+      icon: '⚙️', 
+      name: '系统设置', 
+      description: '个性化配置、权限管理和系统优化' 
+    }
+  }
+
+  // 显示字幕
+  const showSubtitle = (message: SubtitleMessage) => {
+    setCurrentSubtitle(message)
+    if (subtitleTimeout.current) {
+      clearTimeout(subtitleTimeout.current)
+    }
+    subtitleTimeout.current = setTimeout(() => {
+      setCurrentSubtitle(null)
+    }, message.duration)
+  }
+
+  // 自动状态变化
+  const autoChangeState = () => {
+    if (isDragging) return
+    
+    const states: PandaState[] = ['normal', 'walking', 'yawning', 'sleeping', 'working', 'eating']
+    const currentIndex = states.indexOf(pandaState)
+    const nextIndex = (currentIndex + 1) % states.length
+    const nextState = states[nextIndex]
+    
+    setPandaState(nextState)
+    setIsAnimating(true)
+    
+    setTimeout(() => setIsAnimating(false), 600)
+    
+    showSubtitle({
+      id: Date.now().toString(),
+      text: `我现在是${pandaStates[nextState].name}状态`,
+      duration: 2000,
+      type: 'normal'
+    })
+  }
+
+  // 随机移动熊猫
+  const randomMovePanda = () => {
+    if (isDragging) return
+    
+    const newX = Math.random() * (screenSize.width - 150)
+    const newY = Math.random() * (screenSize.height - 150)
+    setPosition({ x: newX, y: newY })
+    
+    showSubtitle({
+      id: Date.now().toString(),
+      text: '我换个位置待着...',
+      duration: 2000,
+      type: 'mood'
+    })
+  }
+
+  // 鼠标按下开始拖拽
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y }
+    setIsDragging(true)
+    setShowContextMenu(false)
+    setShowFunctionWindow(null)
+  }
+
+  // 鼠标移动拖拽
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return
+    
+    const newX = Math.max(0, Math.min(e.clientX - dragStart.current.x, screenSize.width - 150))
+    const newY = Math.max(0, Math.min(e.clientY - dragStart.current.y, screenSize.height - 150))
+    setPosition({ x: newX, y: newY })
+  }
+
+  // 鼠标释放结束拖拽
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  // 右键菜单
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setShowContextMenu(!showContextMenu)
+    setShowFunctionWindow(null)
+  }
+
+  // 点击熊猫
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    const now = Date.now()
+    
+    if (now - lastClickTime.current < 300) {
+      // 双击打开聊天
+      openEnterpriseFunction('chat')
+    } else {
+      // 单击切换状态
+      const states: PandaState[] = ['normal', 'walking', 'yawning', 'sleeping', 'working', 'eating']
+      const currentIndex = states.indexOf(pandaState)
+      const nextIndex = (currentIndex + 1) % states.length
+      const nextState = states[nextIndex]
+      
+      setPandaState(nextState)
+      setIsAnimating(true)
+      
+      setTimeout(() => setIsAnimating(false), 600)
+      
+      showSubtitle({
+        id: Date.now().toString(),
+        text: `我现在是${pandaStates[nextState].name}状态`,
+        duration: 2000,
+        type: 'normal'
+      })
+    }
+    
+    lastClickTime.current = now
+  }
+
+  // 打开企业功能
+  const openEnterpriseFunction = (func: EnterpriseFunction) => {
+    setShowFunctionWindow(func)
+    setShowContextMenu(false)
+    
+    showSubtitle({
+      id: Date.now().toString(),
+      text: `打开${enterpriseFunctions[func].name}`,
+      duration: 2000,
+      type: 'enterprise'
+    })
+  }
+
+  // 改变心情
+  const changeMood = (newMood: 'happy' | 'normal' | 'tired' | 'excited') => {
+    setMood(newMood)
+    setShowContextMenu(false)
+    
+    const moodTexts = {
+      happy: '我很开心！',
+      normal: '我很平静',
+      tired: '我有点累了...',
+      excited: '我很兴奋！'
+    }
+    
+    showSubtitle({
+      id: Date.now().toString(),
+      text: moodTexts[newMood],
+      duration: 2000,
+      type: 'mood'
+    })
+  }
+
+  // 切换自动状态变化
+  const toggleAutoChange = () => {
+    setIsAutoChanging(!isAutoChanging)
+    setShowContextMenu(false)
+    
+    showSubtitle({
+      id: Date.now().toString(),
+      text: isAutoChanging ? '停止自动变化' : '开始自动变化',
+      duration: 2000,
+      type: 'normal'
+    })
+  }
+
+  // 发送聊天消息
+  const sendChatMessage = async () => {
+    if (!chatInput.trim()) return
+    
+    const userMessage = {
+      id: Date.now().toString(),
+      text: chatInput,
+      type: 'user' as const,
+      timestamp: new Date()
+    }
+    
+    setChatMessages(prev => [...prev, userMessage])
+    setChatInput('')
+    
+    try {
+      // 使用腾讯云ADP进行AI对话
+      const response = await adpClient.chat({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: '你是小竹子，一个可爱的AI桌面助手，专门帮助企业用户解决各种业务问题。' },
+          { role: 'user', content: chatInput }
+        ],
+        temperature: 0.7,
+        max_tokens: 500
+      })
+      
+      const aiMessage = {
+        id: (Date.now() + 1).toString(),
+        text: response.choices[0].message.content,
+        type: 'ai' as const,
+        timestamp: new Date()
+      }
+      
+      setChatMessages(prev => [...prev, aiMessage])
+    } catch (error) {
+      console.error('AI chat failed:', error)
+      const errorMessage = {
+        id: (Date.now() + 1).toString(),
+        text: '抱歉，我现在无法回复，请稍后再试。',
+        type: 'ai' as const,
+        timestamp: new Date()
+      }
+      setChatMessages(prev => [...prev, errorMessage])
+    }
+  }
+
+  // 点击外部关闭菜单
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      setShowContextMenu(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // 自动状态变化定时器
+  useEffect(() => {
+    if (isAutoChanging) {
+      autoChangeInterval.current = setInterval(autoChangeState, 8000) // 每8秒变化一次
+    } else {
+      if (autoChangeInterval.current) {
+        clearInterval(autoChangeInterval.current)
+        autoChangeInterval.current = null
+      }
+    }
+    
+    return () => {
+      if (autoChangeInterval.current) {
+        clearInterval(autoChangeInterval.current)
+      }
+    }
+  }, [isAutoChanging, pandaState])
+
+  // 随机移动定时器
+  useEffect(() => {
+    randomMoveInterval.current = setInterval(randomMovePanda, 15000) // 每15秒随机移动一次
+    
+    return () => {
+      if (randomMoveInterval.current) {
+        clearInterval(randomMoveInterval.current)
+      }
+    }
+  }, [isDragging, screenSize])
+
+  // 初始化
+  useEffect(() => {
+    console.log('🚀 小竹子桌面宠物启动中...')
+    
+    const makeVisible = async () => {
+      try {
+        const window = getCurrentWindow()
+        await window.setAlwaysOnTop(true)
+        await window.show()
+        await window.setFocus()
+        console.log('✅ 窗口已设置为可见')
+        
+        // 显示欢迎字幕
+        showSubtitle({
+          id: 'welcome',
+          text: '你好！我是小竹子，你的AI桌面助手！🐼',
+          duration: 4000,
+          type: 'normal'
+        })
+      } catch (error) {
+        console.error('❌ 设置窗口可见性失败:', error)
+      }
+    }
+    
+    makeVisible()
+  }, [])
+
+  // 计算UI元素位置 - 优化为500x500窗口
+  const getSubtitlePosition = () => {
+    const left = Math.max(10, Math.min(position.x - 150, screenSize.width - 310))
+    const top = Math.max(10, position.y - 80)
+    return { left, top }
+  }
+
+  const getContextMenuPosition = () => {
+    const left = Math.max(10, Math.min(position.x + 160, screenSize.width - 210))
+    const top = Math.max(10, Math.min(position.y + 50, screenSize.height - 250))
+    return { left, top }
+  }
+
+  const getFunctionWindowPosition = () => {
+    const left = Math.max(10, Math.min(position.x - 200, screenSize.width - 410))
+    const top = Math.max(10, Math.min(position.y - 200, screenSize.height - 450))
+    return { left, top }
+  }
+
+  return (
+    <div className="app-container">
+      {/* 小熊猫主体 */}
+      <div 
+        className="panda-container"
+        ref={dragRef}
+        style={{
+          position: 'absolute',
+          left: position.x,
+          top: position.y,
+          cursor: isDragging ? 'grabbing' : 'grab'
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onContextMenu={handleContextMenu}
+        onClick={handleClick}
+      >
+        <motion.img 
+          src={pandaStates[pandaState].image}
+          alt="小竹子"
+          className="panda-image"
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ 
+            opacity: 1, 
+            scale: isAnimating ? 1.2 : 1,
+            rotate: isAnimating ? [0, 10, -10, 0] : 0
+          }}
+          transition={{ 
+            duration: isAnimating ? 0.6 : 1,
+            rotate: { duration: 0.6 }
+          }}
+        />
+        
+        {/* 状态指示器 */}
+        <div className="state-indicator">
+          {pandaStates[pandaState].name}
+        </div>
+        
+        {/* 心情指示器 */}
+        <div className={`mood-indicator mood-${mood}`}>
+          {mood === 'happy' && '😊'}
+          {mood === 'normal' && '😌'}
+          {mood === 'tired' && '😴'}
+          {mood === 'excited' && '🎉'}
+        </div>
+
+        {/* 拖拽提示 */}
+        <div className="drag-hint">
+          拖拽移动
+        </div>
+      </div>
+
+      {/* 字幕显示 */}
+      <AnimatePresence>
+        {currentSubtitle && (
+          <motion.div 
+            className="subtitle"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            style={{
+              position: 'absolute',
+              left: getSubtitlePosition().left,
+              top: getSubtitlePosition().top,
+              zIndex: 1000
+            }}
+          >
+            <div className={`subtitle-content ${currentSubtitle.type}`}>
+              {currentSubtitle.text}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 右键菜单 */}
+      <AnimatePresence>
+        {showContextMenu && (
+          <motion.div 
+            className="context-menu"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            style={{
+              position: 'absolute',
+              left: getContextMenuPosition().left,
+              top: getContextMenuPosition().top,
+              zIndex: 1001
+            }}
+          >
+            <div className="menu-section">基本设置</div>
+            <div className="menu-item" onClick={toggleAutoChange}>
+              {isAutoChanging ? '⏸️ 停止自动变化' : '▶️ 开始自动变化'}
+            </div>
+            <div className="menu-item" onClick={() => setPandaState('normal')}>
+              🐼 重置状态
+            </div>
+            
+            <div className="menu-separator" />
+            <div className="menu-section">心情设置</div>
+            <div className="menu-item" onClick={() => changeMood('happy')}>
+              😊 开心
+            </div>
+            <div className="menu-item" onClick={() => changeMood('normal')}>
+              😌 平静
+            </div>
+            <div className="menu-item" onClick={() => changeMood('tired')}>
+              😴 疲惫
+            </div>
+            <div className="menu-item" onClick={() => changeMood('excited')}>
+              🎉 兴奋
+            </div>
+            
+            <div className="menu-separator" />
+            <div className="menu-section">企业功能</div>
+            {Object.entries(enterpriseFunctions).map(([key, func]) => (
+              <div 
+                key={key}
+                className="menu-item"
+                onClick={() => openEnterpriseFunction(key as EnterpriseFunction)}
+              >
+                {func.icon} {func.name}
+              </div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 企业功能窗口 */}
+      <AnimatePresence>
+        {showFunctionWindow && (
+          <motion.div 
+            className="function-window"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            style={{
+              position: 'absolute',
+              left: getFunctionWindowPosition().left,
+              top: getFunctionWindowPosition().top,
+              zIndex: 1002
+            }}
+          >
+            <div className="function-header">
+              <h3>{enterpriseFunctions[showFunctionWindow].icon} {enterpriseFunctions[showFunctionWindow].name}</h3>
+              <button 
+                className="close-btn"
+                onClick={() => setShowFunctionWindow(null)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="function-content">
+              <p>{enterpriseFunctions[showFunctionWindow].description}</p>
+              
+              {showFunctionWindow === 'chat' ? (
+                <div className="chat-interface">
+                  <div className="chat-messages">
+                    {chatMessages.map((message) => (
+                      <div key={message.id} className={`message ${message.type}`}>
+                        <div className="message-content">{message.text}</div>
+                        <div className="message-time">
+                          {message.timestamp.toLocaleTimeString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="chat-input-container">
+                    <input
+                      type="text"
+                      className="chat-input"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()}
+                      placeholder="输入消息..."
+                    />
+                    <button 
+                      className="send-btn"
+                      onClick={sendChatMessage}
+                      disabled={!chatInput.trim()}
+                    >
+                      发送
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="function-placeholder">
+                  <p>🚧 功能开发中...</p>
+                  <p>这里将集成腾讯云ADP智能体</p>
+                  <p>支持LLM+RAG、Workflow、MCP插件</p>
+                  <div className="integration-status">
+                    <div className="status-item">
+                      <span className="status-icon">🤖</span>
+                      <span>LLM对话引擎</span>
+                      <span className="status-badge">已集成</span>
+                    </div>
+                    <div className="status-item">
+                      <span className="status-icon">📚</span>
+                      <span>RAG知识库</span>
+                      <span className="status-badge">开发中</span>
+                    </div>
+                    <div className="status-item">
+                      <span className="status-icon">⚡</span>
+                      <span>Workflow引擎</span>
+                      <span className="status-badge">开发中</span>
+                    </div>
+                    <div className="status-item">
+                      <span className="status-icon">🔌</span>
+                      <span>MCP插件生态</span>
+                      <span className="status-badge">开发中</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+export default App

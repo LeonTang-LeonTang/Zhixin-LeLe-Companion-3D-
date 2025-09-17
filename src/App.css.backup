@@ -1,0 +1,672 @@
+/* 小竹子桌面宠物样式 - 优化窗口显示版本 */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  width: 100vw;
+  height: 100vh;
+}
+
+.app-container {
+  width: 100vw;
+  height: 100vh;
+  background: transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 熊猫容器 - 优化尺寸 */
+.panda-container {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  cursor: grab;
+  user-select: none;
+  z-index: 1000;
+  transition: transform 0.2s ease;
+}
+
+.panda-container:active {
+  cursor: grabbing;
+  transform: scale(1.05);
+}
+
+/* 熊猫图片 - 优化尺寸 */
+.panda-image {
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+  transition: all 0.3s ease;
+}
+
+.panda-image:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4));
+}
+
+/* 状态指示器 - 优化尺寸 */
+.state-indicator {
+  position: absolute;
+  bottom: -25px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 6px 16px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+  z-index: 1001;
+  min-width: 80px;
+  text-align: center;
+}
+
+/* 心情指示器 - 优化尺寸 */
+.mood-indicator {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  z-index: 1002;
+  animation: pulse 2s infinite;
+}
+
+.mood-happy {
+  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+  box-shadow: 0 4px 15px rgba(252, 182, 159, 0.4);
+}
+
+.mood-normal {
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  box-shadow: 0 4px 15px rgba(168, 237, 234, 0.4);
+}
+
+.mood-tired {
+  background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%);
+  box-shadow: 0 4px 15px rgba(210, 153, 194, 0.4);
+}
+
+.mood-excited {
+  background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+  box-shadow: 0 4px 15px rgba(255, 154, 158, 0.4);
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* 字幕样式 - 优化显示 */
+.subtitle {
+  position: absolute;
+  z-index: 1003;
+  pointer-events: none;
+  max-width: 300px;
+}
+
+.subtitle-content {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  max-width: 300px;
+  text-align: center;
+  word-wrap: break-word;
+  position: relative;
+  line-height: 1.4;
+}
+
+.subtitle-content::before {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid #667eea;
+}
+
+.subtitle-content.enterprise {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+}
+
+.subtitle-content.enterprise::before {
+  border-top-color: #ff6b6b;
+}
+
+.subtitle-content.mood {
+  background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+  box-shadow: 0 6px 20px rgba(78, 205, 196, 0.4);
+}
+
+.subtitle-content.mood::before {
+  border-top-color: #4ecdc4;
+}
+
+/* 右键菜单 - 优化显示 */
+.context-menu {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 8px 0;
+  min-width: 200px;
+  max-width: 300px;
+  z-index: 1004;
+  overflow: hidden;
+}
+
+.menu-section {
+  padding: 8px 12px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.menu-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-item:hover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  transform: translateX(4px);
+}
+
+.menu-separator {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #ddd, transparent);
+  margin: 4px 0;
+}
+
+/* 企业功能窗口 - 优化显示 */
+.function-window {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  width: 400px;
+  max-height: 450px;
+  z-index: 1005;
+  overflow: hidden;
+}
+
+.function-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.function-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.function-content {
+  padding: 20px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.function-content p {
+  margin-bottom: 12px;
+  color: #666;
+  line-height: 1.5;
+  word-wrap: break-word;
+  font-size: 14px;
+}
+
+.function-placeholder {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  margin-top: 16px;
+}
+
+.function-placeholder p {
+  margin-bottom: 8px;
+  color: #555;
+  font-size: 13px;
+  word-wrap: break-word;
+}
+
+.function-placeholder p:first-child {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* 聊天界面样式 */
+.chat-interface {
+  margin-top: 16px;
+}
+
+.chat-messages {
+  max-height: 250px;
+  overflow-y: auto;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.message {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  max-width: 85%;
+  word-wrap: break-word;
+}
+
+.message.user {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  margin-left: auto;
+  text-align: right;
+}
+
+.message.ai {
+  background: #e9ecef;
+  color: #333;
+  margin-right: auto;
+}
+
+.message-content {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.message-time {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 4px;
+}
+
+.chat-input-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.chat-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.chat-input:focus {
+  border-color: #667eea;
+}
+
+.send-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: transform 0.2s ease;
+}
+
+.send-btn:hover {
+  transform: scale(1.05);
+}
+
+.send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 拖拽提示 */
+.drag-hint {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 1006;
+}
+
+.panda-container:hover .drag-hint {
+  opacity: 1;
+}
+
+/* 响应式设计 - 确保在500x500窗口内正确显示 */
+@media (max-width: 500px) {
+  .subtitle {
+    max-width: 250px;
+  }
+  
+  .subtitle-content {
+    max-width: 250px;
+    font-size: 12px;
+    padding: 8px 14px;
+  }
+  
+  .context-menu {
+    min-width: 180px;
+    max-width: 250px;
+  }
+  
+  .function-window {
+    width: 350px;
+    max-height: 400px;
+  }
+  
+  .function-content {
+    padding: 16px;
+    max-height: 320px;
+  }
+}
+
+/* 确保所有元素在窗口边界内 */
+.panda-container {
+  max-width: calc(100vw - 20px);
+  max-height: calc(100vh - 20px);
+}
+
+.subtitle {
+  max-width: calc(100vw - 40px);
+}
+
+.context-menu {
+  max-width: calc(100vw - 40px);
+}
+
+.function-window {
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 40px);
+}
+
+/* 智能定位 - 防止UI元素超出屏幕 */
+.subtitle {
+  left: 50%;
+  transform: translateX(-50%);
+  top: -60px;
+}
+
+.context-menu {
+  left: 50%;
+  transform: translateX(-50%);
+  top: 180px;
+}
+
+.function-window {
+  left: 50%;
+  transform: translateX(-50%);
+  top: 50%;
+  margin-top: -200px;
+}
+
+/* 动画效果 */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.subtitle-content {
+  animation: fadeIn 0.3s ease;
+}
+
+.context-menu {
+  animation: slideIn 0.2s ease;
+}
+
+.function-window {
+  animation: fadeIn 0.3s ease;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+}
+
+/* 集成状态样式 */
+.integration-status {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.status-icon {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+}
+
+.status-badge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+  margin-left: auto;
+}
+
+/* 聊天输入框样式优化 */
+.chat-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s ease;
+  background: white;
+}
+
+.chat-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+/* 确保所有元素在500x500窗口内正确显示 */
+.app-container {
+  width: 500px;
+  height: 500px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 优化熊猫容器位置计算 */
+.panda-container {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  cursor: grab;
+  user-select: none;
+  z-index: 1000;
+  transition: transform 0.2s ease;
+}
+
+/* 确保字幕在窗口内显示 */
+.subtitle {
+  position: absolute;
+  z-index: 1003;
+  pointer-events: none;
+  max-width: 300px;
+  word-wrap: break-word;
+}
+
+/* 确保右键菜单在窗口内显示 */
+.context-menu {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 8px 0;
+  min-width: 200px;
+  max-width: 300px;
+  z-index: 1004;
+  overflow: hidden;
+}
+
+/* 确保企业功能窗口在窗口内显示 */
+.function-window {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  width: 400px;
+  max-height: 450px;
+  z-index: 1005;
+  overflow: hidden;
+}
+
+/* 响应式调整 - 确保在500x500窗口内正确显示 */
+@media (max-width: 500px) {
+  .app-container {
+    width: 100vw;
+    height: 100vh;
+  }
+  
+  .subtitle {
+    max-width: 250px;
+  }
+  
+  .subtitle-content {
+    max-width: 250px;
+    font-size: 12px;
+    padding: 8px 14px;
+  }
+  
+  .context-menu {
+    min-width: 180px;
+    max-width: 250px;
+  }
+  
+  .function-window {
+    width: 350px;
+    max-height: 400px;
+  }
+  
+  .function-content {
+    padding: 16px;
+    max-height: 320px;
+  }
+}
